@@ -7,9 +7,9 @@ const int SIZE = 50; //max size of the array, and also the number of item that c
 
 void calculateInstructorAverage(const double averageScore[5]);
 int displayMenu(); //display menu
-void enterData(char[5], int part); //enter new data into file. Overwrite current data in file
-void appendData(char[5], int part); //append data to the end of the file. Old data remains
-void getUserInput(ofstream&, int, char[5]); //to obtain and validate the students' scores entered by user
+void enterData(char[5], int part, bool); //enter new data into file. Overwrite current data in file
+void appendData(char[5], int part, bool); //append data to the end of the file. Old data remains
+void getUserInput(ofstream&, int, char[5], bool); //to obtain and validate the students' scores entered by user
 void countParticipant(int& participant); //count the number of participant in the file
 void readData(string[][7], int& instructorcode2, int& coursecode2, int participant); //read and copy data of file into array
 void findAverage(const string[50][7], int instructorcode2, int coursecode2, int participant, double[5]); //find the average marks
@@ -21,6 +21,7 @@ int main() {
 	string evaluation[10][7]; //Used to set the 
 	double averageScore[5] = {0, 0, 0, 0, 0}; //to hold the average score of each question, which will be used to calculate Instructor average
 	int count; //For user's input for menu selection
+	bool append = false; //check whether user is appending data into the file or not.
 	
 	do {
 		//display menu
@@ -36,10 +37,10 @@ int main() {
 		switch (count)
 		{
 		case 1: //enter new data
-			enterData(question, part);
+			enterData(question, part, append);
 			break;
 		case 2: //append data
-			appendData(question, part);
+			appendData(question, part, append);
 			break;
 		case 3:
 			/*
@@ -60,14 +61,7 @@ int main() {
 			break;
 		}
 	} while (count != 5);
-
-	for (int i = 0; i < 10; i++) {
-		for (int j = 0; j < 7; j++) {
-			cout << evaluation[i][j] << " ";
-		}
-		cout << endl;
-	}
-	
+			
 	return 0;
 }
 
@@ -84,27 +78,31 @@ int displayMenu() {
 	return count;
 }
 
-void enterData(char Question[5], int part) {
+void enterData(char Question[5], int part, bool append) {
 	ofstream outFile("evaluationSummary.txt");
 	cout << "enter number of participant";
 	//number of participant that user wanna enter. Note that this variable will be used
 	//to determine how many time the for loop will iterate only, as this value will be reset
 	//once user close the program, hence making it unsuitable for calculating the average
 	cin >> part; 
-	getUserInput(outFile, part, Question); 
+	getUserInput(outFile, part, Question, append); 
+
+	outFile.close();
 }
 
-void appendData(char Question[5], int part) {
+void appendData(char Question[5], int part, bool append) {
+	append = true; //append data, so append is true;
 	ofstream outFile("evaluationSummary.txt", ios::app); //append mode
 	cout << "Enter number of participant";
 	cin >> part;
-	getUserInput(outFile, part, Question);
+	getUserInput(outFile, part, Question, append);
+	outFile.close();
 }
 
 /*As we will ask for user input 2 times in enterData() and appendData(), we define a function
  *that will ask for user input and save it in the file to prevent us from repeating that task
 */
-void getUserInput(ofstream& outFile, int part, char Question[5]) {
+void getUserInput(ofstream& outFile, int part, char Question[5], bool append) {
 	int instructorNum, courseCode;
 	for (int j = 0; j < part; j++) {
 		cout << "Enter the instructor code, course code and the answers of 5 questions: ";
@@ -124,8 +122,23 @@ void getUserInput(ofstream& outFile, int part, char Question[5]) {
 			}
 		}
 		//Write those input into the file
-		outFile << endl << instructorNum << " " << courseCode << " " << Question[0] << " " << Question[1] << " " << Question[2]
-			<< " " << Question[3] << " " << Question[4];
+		//append and write first line, when user input is exactly one participant to ensure that the data begin on newline
+		if (append && j == 0 && part == 1) { 
+			outFile << "\n" << instructorNum << " " << courseCode << " " << Question[0] << " " << Question[1] << " " << Question[2]
+				<< " " << Question[3] << " " << Question[4];
+		} //append and write first line, to ensure that the line start at new line and make a new line for next line of data
+		else if (append && j == 0) {
+			outFile << "\n" << instructorNum << " " << courseCode << " " << Question[0] << " " << Question[1] << " " << Question[2]
+				<< " " << Question[3] << " " << Question[4] << endl;
+		}
+		else if (j == part - 1) { //last index, make sure no empty line at the end of the file
+			outFile << instructorNum << " " << courseCode << " " << Question[0] << " " << Question[1] << " " << Question[2]
+				<< " " << Question[3] << " " << Question[4];
+		}
+		else { //else, copy data into the line and leave a new line behind for next line of data
+			outFile << instructorNum << " " << courseCode << " " << Question[0] << " " << Question[1] << " " << Question[2]
+				<< " " << Question[3] << " " << Question[4] << endl;
+		}
 	}
 }
 
@@ -143,6 +156,7 @@ void countParticipant(int& participant) {
 		getline(inFile, temp); //read file line by line, then copy into temp
 		participant++; //increment
 	}
+	inFile.close();
 }
 
 void readData(string arr[][7], int& instructorcode2, int& coursecode2, int participant) {
@@ -151,7 +165,7 @@ void readData(string arr[][7], int& instructorcode2, int& coursecode2, int parti
 		cerr << "Error finding input file" << endl;
 		exit(1);
 	}
-	inFile >> instructorcode2 >> coursecode2; //copy instructor code and course code
+	//inFile >> instructorcode2 >> coursecode2; //copy instructor code and course code
 
 	/*Then iterate the file line by line, and copy the data into the 2D array
 	*/
@@ -166,6 +180,8 @@ void readData(string arr[][7], int& instructorcode2, int& coursecode2, int parti
 	/* Why do we copy the Instructor number and Course code only once? Because we assume that the data input from
 	   user is only from a class containing data from an instructor that teaches only one course.
 	*/
+
+	inFile.close();
 }
 
 void findAverage(const string evaluation[50][7], int instructorcode2, int coursecode2, int participant, double averageScore[5]) {
@@ -225,4 +241,6 @@ void displayDataInFile() {
 		cout << arr[0] << " " << arr[1] << " " << arr[2] << " " << arr[3] << " " << 
 			arr[4] << " " << arr[5] << " " << arr[6] << endl; //c them out 
 	}
+
+	inFile.close(); 
 }
